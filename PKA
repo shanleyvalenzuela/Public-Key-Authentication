@@ -1,0 +1,36 @@
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
+
+# Step 1: Generate RSA keys (public and private)
+def generate_keys():
+    key = RSA.generate(2048) 
+    private_key = key
+    public_key = key.publickey()
+    return private_key, public_key
+
+# Step 2: Encrypt data using the public key
+def encrypt_data(public_key, data):
+    cipher = PKCS1_OAEP.new(public_key)
+    encrypted_data = cipher.encrypt(data.encode()) 
+    return encrypted_data
+
+# Step 3: Decrypt data using the private key
+def decrypt_data(private_key, encrypted_data):
+    cipher = PKCS1_OAEP.new(private_key)
+    decrypted_data = cipher.decrypt(encrypted_data)
+    return decrypted_data.decode()
+
+def main():
+    # Sample data
+    data = "NSCOM3"
+    
+    private_key, public_key = generate_keys()
+    
+    encrypted_data = encrypt_data(public_key, data)
+    print(f"Encrypted Data: {encrypted_data}")
+
+    decrypted_data = decrypt_data(private_key, encrypted_data)
+    print(f"Decrypted Data: {decrypted_data}")
+
+if __name__ == "__main__":
+    main()
