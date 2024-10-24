@@ -1,36 +1,65 @@
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
+import hashlib
 
-# Step 1: Generate RSA keys (public and private)
 def generate_keys():
-    key = RSA.generate(2048) 
+    key = RSA.generate(2048)
     private_key = key
     public_key = key.publickey()
     return private_key, public_key
 
-# Step 2: Encrypt data using the public key
-def encrypt_data(public_key, data):
+def ones_complement(decimal_value, bit_size):
+    max_value = (2**bit_size) - 1
+    return max_value - decimal_value
+
+def handle_wrapping(sum_value, bit_size):
+    carry = sum_value >> bit_size
+    wrapped_sum = sum_value & ((1 << bit_size) - 1)
+    wrapped_sum += carry
+    if wrapped_sum >= (1 << bit_size):
+        wrapped_sum = handle_wrapping(wrapped_sum, bit_size)
+    return wrapped_sum
+
+def calculate_checksum(data, bit_size):
+    total_sum = sum(ord(char) for char in data)
+    wrapped_sum = handle_wrapping(total_sum, bit_size)
+    checksum = ones_complement(wrapped_sum, bit_size)
+    return checksum
+
+def encrypt_data(public_key, data, checksum):
     cipher = PKCS1_OAEP.new(public_key)
-    encrypted_data = cipher.encrypt(data.encode()) 
+    message = f"{data}:{checksum}"  
+    encrypted_data = cipher.encrypt(message.encode())
     return encrypted_data
 
-# Step 3: Decrypt data using the private key
 def decrypt_data(private_key, encrypted_data):
     cipher = PKCS1_OAEP.new(private_key)
-    decrypted_data = cipher.decrypt(encrypted_data)
-    return decrypted_data.decode()
+    decrypted_data = cipher.decrypt(encrypted_data).decode()
+    data, checksum = decrypted_data.split(":")
+    return data, int(checksum)
 
+# Main function to demonstrate PKA with checksum
 def main():
     # Sample data
     data = "NSCOM3"
-    
     private_key, public_key = generate_keys()
-    
-    encrypted_data = encrypt_data(public_key, data)
+    checksum = calculate_checksum(data, 8)
+
+
+    encrypted_data = encrypt_data(public_key, data, checksum)
     print(f"Encrypted Data: {encrypted_data}")
 
-    decrypted_data = decrypt_data(private_key, encrypted_data)
+    decrypted_data, received_checksum = decrypt_data(private_key, encrypted_data)
     print(f"Decrypted Data: {decrypted_data}")
+
+    
+    print(f"Received Checksum: {received_checksum}")
+
+    calculated_checksum = calculate_checksum(decrypted_data, 8)
+    if calculated_checksum == received_checksum:
+        print("Checksum verified, data is intact.")
+    else:
+        print("Checksum mismatch, data is corrupted.")
 
 if __name__ == "__main__":
     main()
